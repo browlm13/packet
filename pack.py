@@ -60,11 +60,29 @@ class pack():
 		tags, contents = zip(*self.guts)
 		return tags.index(tag)
 
-	#def remove(*tags):
-	#def start_byte(tag):
-	#def end_byte(tag):
+	def start_byte(self,tag):
+		if self.rank(tag) == 0:
+			return 0
+		return len(self[:tag]())
+
+	def end_byte(self,tag):
+		index = self.rank(tag) + 1
+		return len(self[:index]())
+
+	def remove(self, *tags):
+		trash_tags = [t for t in tags]
+		saved_tags = [i[0] for i in self.map() if i[0] not in trash_tags]
+		new_map = self.map(*saved_tags)
+		new_pack = pack(new_map)
+
+		for t in saved_tags:
+			new_pack[t] = self[t]
+
+		self.__init__(new_pack)
+
 	#def zero(*tags=None):
-	#def instert(rank,tag,)
+	
+	#def insert(rank,tag,)
 
 
 	def is_guts(self, arg):
@@ -129,6 +147,10 @@ class pack():
 
 	def __init__(self, initializer):
 		""" pack takes a map, or another pack as its initializer """
+
+		#empty pack object length 0
+		if initializer == []:
+			raise ValueError('Pack initialized with empty list')
 
 		if type(initializer) == pack:
 			self.guts = list(initializer.guts)
@@ -244,7 +266,7 @@ class pack():
 	Testing
 """
 
-"""
+
 import struct
 import random
 
@@ -265,6 +287,24 @@ bytearray_generator = lambda length: concat(bytearray(struct.pack('B', random.ra
 m = [['t1',1],['t2',2],['t3',3], ['crc',2]]
 p = pack(m)
 
+p['crc'] = bytearray_generator(2)
+p['t1'] = bytearray_generator(1)
+p['t2'] = bytearray_generator(1)
+
+print(p)
+print(p())
+print (p['t1'])
+print (p['crc'])
+
+p.remove('t2','t3')
+
+print("\noutside...")
+print(p)
+print(p())
+print (p['t1'])
+print (p['crc'])
+
+"""
 p['crc'] = bytearray_generator(2)
 print (p)
 print (p())
