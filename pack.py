@@ -29,13 +29,6 @@
 				of the feilds specified (in order specified)
 
 	[todo]:
-		insert
-		remove/delete/del
-		append
-		arithmatic operators: + (append),
-		clear/zero
-		start #byte number
-		end #byte number
 		which
 		random fills?
 
@@ -57,7 +50,6 @@ def concat(g):
 bytearray_generator = lambda length: concat(bytearray(struct.pack('B', random.randint(0,255))) for i in range(length))
 
 
-
 class pack():
 
 	def guts_to_bytearray(self, guts): 
@@ -74,6 +66,10 @@ class pack():
 		tags, contents = zip(*self.guts)
 		return tags.index(tag)
 
+	#obtain tag name from rank
+	def tag(self, rank):
+		return self.guts[rank][0]
+
 	def start_byte(self,tag):
 		if self.rank(tag) == 0:
 			return 0
@@ -85,24 +81,54 @@ class pack():
 
 	def remove(self, *tags):
 		trash_tags = [t for t in tags]
+
+		#if rank/index, convert to tag
+		for i in range(0,len(trash_tags)):
+			if type(trash_tags[i]) == int:
+				trash_tags[i] = self.tag(trash_tags[i])
+
 		saved_tags = [i[0] for i in self.map() if i[0] not in trash_tags]
 		new_map = self.map(*saved_tags)
-		new_pack = pack(new_map)
+		np = pack(new_map)
 
 		for t in saved_tags:
-			new_pack[t] = self[t]
+			np[t] = self[t]
 
-		self.__init__(new_pack)
+		self.__init__(np)
+
+	def insert(self,rank,tag,ba):
+
+		assert tag not in self
+		additional_pack = pack([[tag,len(ba)]])
+		additional_pack[tag] = ba
+
+		if rank == 0:
+			additional_pack.append(self)
+			self.__init__(additional_pack)
+
+		elif rank == len(self):
+			self.append(additional_pack)
+		else:
+			pre_pack = self[:rank]
+			post_pack = self[rank:]
+
+			new_map = pre_pack.map() + additional_pack.map() + post_pack.map()
+			np = pack(new_map)
+			np <<= pre_pack() + additional_pack() + post_pack()
+
+			self.__init__(np)
+
+	def append(self,tail_pack):
+		new_map = self.map() + tail_pack.map()
+		np = pack(new_map)
+		np <<= self() + tail_pack()
+		self.__init__(np)
 
 	def zero(self,*tags):
 		if len(tags) == 0:
 			self <<= bytearray(self.size_bytes())
 		for t in tags:
 			self[t] = bytearray(len(self[t]))
-
-
-	#def insert(rank,tag,)
-
 
 	def is_guts(self, arg):
 		try:
@@ -228,7 +254,6 @@ class pack():
 		if len(indexs) == 0:
 			return self.guts_to_bytearray(self.guts)
 
-
 		selected = filter(lambda i: (i[0] in indexs) or (self.rank(i[0]) in indexs), self.guts)
 		return self.guts_to_bytearray(selected)
 
@@ -281,26 +306,38 @@ class pack():
 		assert len(raw_data) >= self.size_bytes()
 		return self.__ilshift__(raw_data[:self.size_bytes()])
 
+	#import bytearray with |=, read until empty
+	def __ior__(self, raw_data):
+		assert len(raw_data) <= self.size_bytes()
+		dif = len(self()) - len(raw_data)
+
+		if dif == 0:
+			return self.__ilshift__(raw_data)
+
+		nba = raw_data + self()[-dif:]
+		return self.__ilshift__(nba)
+
+	#concatinate pack object to pack
+	def __add__(self, rhs):
+		assert type(rhs) == pack
+		nm = self.map() + rhs.map()
+		np = pack(nm)
+		np <<= self() + rhs()
+		return np
+
+	#concatinate += pack object to pack
+	def __iadd__(self, rhs):
+		assert type(rhs) == pack
+		self.append(rhs)
+		return self
+
+
 """
 	Testing
 """
 
 
-import struct
-import random
-
-#
-#	useful functions
-#
-def concat(g): 
-	r = next(g)
-	for i in g: r += i
-	return r
-
-bytearray_generator = lambda length: concat(bytearray(struct.pack('B', random.randint(0,255))) for i in range(length))
-
-
-
+"""
 #test creation
 
 m = [['t1',1],['t2',2],['t3',3], ['crc',2]]
@@ -308,24 +345,15 @@ p = pack(m)
 
 p['crc'] = bytearray_generator(2)
 p['t1'] = bytearray_generator(1)
-p['t2'] = bytearray_generator(1)
+p['t2'] = bytearray_generator(2)
 
-print(p)
-print(p())
-
-
-p.zero()
-
-print(p)
-print(p())
-
-
-"""
-p['crc'] = bytearray_generator(2)
 print (p)
 print (p())
 #check setting crc
 
+"""
+
+"""
 m2 = [['t1',1],['t2',2],['t3',3]]
 p2 = pack(m2)
 p2 <<= p[:'crc']()
@@ -350,5 +378,4 @@ p2 <<= p1()
 print(p1)
 print(p2)
 
-###!!! or change just the map
 """
