@@ -43,6 +43,20 @@
 			-only works for same size bytes
 
 """
+import struct
+import random
+
+#
+#	useful functions
+#
+def concat(g): 
+	r = next(g)
+	for i in g: r += i
+	return r
+
+bytearray_generator = lambda length: concat(bytearray(struct.pack('B', random.randint(0,255))) for i in range(length))
+
+
 
 class pack():
 
@@ -80,8 +94,13 @@ class pack():
 
 		self.__init__(new_pack)
 
-	#def zero(*tags=None):
-	
+	def zero(self,*tags):
+		if len(tags) == 0:
+			self <<= bytearray(self.size_bytes())
+		for t in tags:
+			self[t] = bytearray(len(self[t]))
+
+
 	#def insert(rank,tag,)
 
 
@@ -293,16 +312,13 @@ p['t2'] = bytearray_generator(1)
 
 print(p)
 print(p())
-print (p['t1'])
-print (p['crc'])
 
-p.remove('t2','t3')
 
-print("\noutside...")
+p.zero()
+
 print(p)
 print(p())
-print (p['t1'])
-print (p['crc'])
+
 
 """
 p['crc'] = bytearray_generator(2)
